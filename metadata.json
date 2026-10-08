@@ -1,0 +1,6 @@
+{
+  "name": "SuryaSathi - Rooftop Solar Adoption Assistant",
+  "description": "AI-powered rooftop solar companion for Indian households. Estimate solar potential, savings, PM Surya Ghar subsidy, payback, and guided DISCOM roadmap.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

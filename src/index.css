@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@layer utilities {
+  @keyframes spinSlow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spinSlow 20s linear infinite;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+/* Print Optimization for Final Solar Plan */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  header,
+  footer,
+  nav,
+  button,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .print\:border-none {
+    border: none !important;
+  }
+
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+
+  /* Ensure page breaks don't tear cards */
+  table, tr, td, th {
+    page-break-inside: avoid;
+  }
+}
