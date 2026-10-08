@@ -7,6 +7,8 @@ import { INDIAN_STATES_DATA, getStateData } from './src/data/indianStates.js';
 import { searchKnowledgeBase } from './src/data/schemeKnowledgeBase.js';
 import { solarCalculationService } from './src/services/solarCalculationService.js';
 import { solarAdvisorService } from './src/services/solarAdvisorService.js';
+import { getAiProvider, AiServiceError } from './server/ai/config.js';
+import { extractBillFromFile } from './server/ai/billExtractor.js';
 
 dotenv.config();
 
@@ -24,6 +26,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
     status: 'healthy',
     service: 'SuryaSathi Rooftop Solar Backend',
     version: '1.0.0',
+    aiProvider: getAiProvider(),
     timestamp: new Date().toISOString(),
     awsMapping: {
       textract: 'MockBillExtractionAdapter -> AWS Textract',
@@ -36,8 +39,21 @@ app.get('/api/health', (_req: Request, res: Response) => {
 });
 
 // Bill Extraction API (AWS Textract adapter)
-app.post('/api/extract-bill', (req: Request, res: Response) => {
+app.post('/api/extract-bill', async (req: Request, res: Response) => {
   try {
+    // Real extraction path (AI_PROVIDER=gemini). Never falls back to fake data.
+    if (getAiProvider() === 'gemini') {
+      const { fileName, fileType, base64 } = req.body || {};
+      if (typeof base64 !== 'string' || !base64) {
+        return res.status(400).json({
+          success: false,
+          error: 'File content is missing. The upload must include the file as base64.',
+        });
+      }
+      const data = await extractBillFromFile({ fileName, fileType, base64 });
+      return res.json({ success: true, data });
+    }
+
     const { fileName = 'bill.pdf', fileSize = 250000, fileType = 'application/pdf' } = req.body || {};
     const fileNameLower = String(fileName).toLowerCase();
 
@@ -161,7 +177,8 @@ app.post('/api/extract-bill', (req: Request, res: Response) => {
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message || 'Bill extraction failed' });
+    const status = err instanceof AiServiceError ? err.status : 500;
+    res.status(status).json({ success: false, error: err.message || 'Bill extraction failed' });
   }
 });
 
