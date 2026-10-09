@@ -10,6 +10,7 @@ import { solarAdvisorService } from './src/services/solarAdvisorService.js';
 import { getAiProvider, AiServiceError } from './server/ai/config.js';
 import { extractBillFromFile } from './server/ai/billExtractor.js';
 import { analyzeRoofFromFile } from './server/ai/roofAnalyzer.js';
+import { askAdvisorAgent } from './server/ai/advisorAgent.js';
 
 dotenv.config();
 
@@ -42,6 +43,9 @@ app.get('/api/health', (_req: Request, res: Response) => {
 // Bill Extraction API (AWS Textract adapter)
 app.post('/api/extract-bill', async (req: Request, res: Response) => {
   try {
+    if (getAiProvider() === 'aws') {
+      return res.status(501).json({ success: false, error: 'AWS bill extraction (Textract) is not implemented yet.' });
+    }
     // Real extraction path (AI_PROVIDER=gemini). Never falls back to fake data.
     if (getAiProvider() === 'gemini') {
       const { fileName, fileType, base64 } = req.body || {};
@@ -186,6 +190,9 @@ app.post('/api/extract-bill', async (req: Request, res: Response) => {
 // Rooftop Analysis API (Amazon SageMaker / CV adapter)
 app.post('/api/analyze-roof', async (req: Request, res: Response) => {
   try {
+    if (getAiProvider() === 'aws') {
+      return res.status(501).json({ success: false, error: 'AWS roof analysis (Bedrock vision) is not implemented yet.' });
+    }
     // Real analysis path (AI_PROVIDER=gemini). Never falls back to fake data.
     if (getAiProvider() === 'gemini') {
       const { fileName, fileType, base64 } = req.body || {};
@@ -355,6 +362,12 @@ app.post('/api/advisor', async (req: Request, res: Response) => {
       });
     }
 
+    // Real advisor (Strands agent): Gemini now, Amazon Bedrock when AI_PROVIDER=aws.
+    if (getAiProvider() !== 'mock') {
+      const data = await askAdvisorAgent(question, context, history);
+      return res.json({ success: true, data });
+    }
+
     const advisorResponse = await solarAdvisorService.askSolarAdvisor(
       question,
       context,
@@ -366,7 +379,8 @@ app.post('/api/advisor', async (req: Request, res: Response) => {
       data: advisorResponse,
     });
   } catch (err: any) {
-    res.status(500).json({
+    const status = err instanceof AiServiceError ? err.status : 500;
+    res.status(status).json({
       success: false,
       error: err.message || 'AI Advisor inference failed.',
     });
