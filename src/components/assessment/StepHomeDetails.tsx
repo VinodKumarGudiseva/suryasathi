@@ -19,7 +19,11 @@ export const StepHomeDetails: React.FC<StepHomeDetailsProps> = ({ initialData, o
   const [formData, setFormData] = useState<HomeDetailsData>(initialData);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const selectedStateObj = INDIAN_STATES_DATA.find((s) => s.state === formData.state) || INDIAN_STATES_DATA[0];
+  const selectedStateObj = INDIAN_STATES_DATA.find((s) => s.state === formData.state);
+
+  const selectedTariff = selectedStateObj?.averageTariffPerKwh || 7.5;
+  const selectedDiscom = selectedStateObj?.discoms[0] || 'Select a state';
+  const selectedCities = selectedStateObj?.majorCities || [];
 
   const handleStateChange = (newState: string) => {
     const matchedState = INDIAN_STATES_DATA.find((s) => s.state === newState);
@@ -33,7 +37,7 @@ export const StepHomeDetails: React.FC<StepHomeDetailsProps> = ({ initialData, o
 
   const handleKwhChange = (kwh: number) => {
     // Automatically approximate bill amount using state tariff if bill amount was empty or default
-    const tariff = selectedStateObj.averageTariffPerKwh || 7.5;
+    const tariff = selectedTariff;
     const estBill = Math.round(kwh * tariff);
     setFormData((prev) => ({
       ...prev,
@@ -102,7 +106,7 @@ export const StepHomeDetails: React.FC<StepHomeDetailsProps> = ({ initialData, o
           </div>
           {errors.state && <p className="text-xs text-rose-600 mt-1 font-medium">{errors.state}</p>}
           <p className="text-[11px] text-slate-500 mt-1">
-            Primary DISCOM: {selectedStateObj.discoms[0]}
+            Primary DISCOM: {selectedDiscom}
           </p>
         </div>
 
@@ -121,7 +125,7 @@ export const StepHomeDetails: React.FC<StepHomeDetailsProps> = ({ initialData, o
               className="w-full px-3.5 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 text-sm font-medium focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all outline-hidden"
             />
             <datalist id="cities-list">
-              {selectedStateObj.majorCities.map((city) => (
+              {selectedCities.map((city) => (
                 <option key={city} value={city} />
               ))}
             </datalist>
@@ -225,7 +229,7 @@ export const StepHomeDetails: React.FC<StepHomeDetailsProps> = ({ initialData, o
               />
             </div>
             <p className="text-[11px] text-slate-500">
-              Estimated at average {selectedStateObj.state} residential tariff of ~₹{selectedStateObj.averageTariffPerKwh}/unit.
+              Estimated at average {formData.state || 'selected state'} residential tariff of ~₹{selectedTariff}/unit.
             </p>
           </div>
         </div>

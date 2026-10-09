@@ -34,13 +34,15 @@ export const DEFAULT_SOLAR_ASSUMPTIONS: SolarAssumptions = {
   // Combined system derate factor (losses due to soiling, temperature coefficient, inverter conversion ~18%)
   systemDerateFactor: 0.82,
 
-  // Standard benchmark turnkey cost per kW installed (panels, grid-tie inverter, structure, AC/DC cabling, earthing)
+  // Estimated planning installation cost, not an MNRE CFA benchmark cost.
   benchmarkCostPerKw: 52000,
 
   // National average residential retail grid electricity tariff (₹/unit)
+  // Approximate planning-average residential tariff, not an official guaranteed tariff.
   defaultTariffRatePerKwh: 7.50,
 
-  // Average Power Purchase Cost (APPC) for surplus solar exported to grid beyond consumption under net-metering
+  // Average Power Purchase Cost (APPC) for surplus solar exported to grid beyond consumption under net-metering.
+  // Planning assumption for surplus export credit, not a universal Indian export tariff.
   surplusExportTariffPerKwh: 3.00,
 
   // PM Surya Ghar: Muft Bijli Yojana Direct Benefit Transfer (DBT) subsidy structure:
@@ -53,8 +55,9 @@ export const DEFAULT_SOLAR_ASSUMPTIONS: SolarAssumptions = {
     threeKwAndAbove: 78000,
   },
 
-  // Average Indian grid carbon intensity factor: 0.82 kg CO2 per kWh (CEA Grid Baseline)
-  gridEmissionFactorKgPerKwh: 0.82,
+  // CEA CO2 Baseline Database Version 22.0:
+  // FY2025-26 weighted-average Indian grid emission factor, expressed as kg CO2 per kWh.
+  gridEmissionFactorKgPerKwh: 0.675,
 
   // Mature tree carbon sequestration rate: ~22.0 kg CO2 per tree per year
   co2AbsorptionPerTreeKgPerYear: 22.0,
@@ -112,30 +115,24 @@ export const INDIAN_MONTHLY_SEASONAL_WEIGHTS: Array<{
 ];
 
 /**
- * Calculates estimated PM Surya Ghar central financial subsidy according to official slab:
- * - Systems <= 0 kW: ₹0
- * - Systems 0.1 to 1.0 kW: ₹30,000 (or proportional for fractional systems)
- * - Systems >1.0 kW to 2.0 kW: ₹60,000
- * - Systems >2.0 kW+: ₹78,000 (capped at ₹78,000 for standard residential meters)
+ * Calculates the PM Surya Ghar central financial assistance according to the
+ * official per-kWp or part thereof progressive slab.
  */
 export function calculatePmSuryaGharSubsidy(
   systemKw: number,
   assumptions: SolarAssumptions = DEFAULT_SOLAR_ASSUMPTIONS
 ): number {
-  if (!systemKw || isNaN(systemKw) || systemKw <= 0) {
+  if (!Number.isFinite(systemKw) || systemKw <= 0) {
     return 0;
   }
 
-  // Rounded to standard practical tiers
-  if (systemKw < 1.0) {
-    // Proportional for micro systems below 1 kW
+  if (systemKw <= 2) {
     return Math.round(systemKw * assumptions.pmSuryaGharSubsidy.upToOneKw);
   }
-  if (systemKw < 1.99) {
-    return assumptions.pmSuryaGharSubsidy.upToOneKw;
+
+  if (systemKw <= 3) {
+    return Math.round(assumptions.pmSuryaGharSubsidy.upToTwoKw + ((systemKw - 2) * 18000));
   }
-  if (systemKw < 2.99) {
-    return assumptions.pmSuryaGharSubsidy.upToTwoKw;
-  }
-  return assumptions.pmSuryaGharSubsidy.threeKwAndAbove;
+
+  return Math.round(assumptions.pmSuryaGharSubsidy.threeKwAndAbove);
 }

@@ -2,10 +2,10 @@ export interface IndianStateData {
   state: string;
   majorCities: string[];
   discoms: string[];
-  averageInsolationKwhPerSqm: number; // Daily kWh/m2
-  averageTariffPerKwh: number; // In INR ₹
-  stateSubsidyBonus: number; // Additional state top-up subsidy in INR
-  solarYieldFactor: number; // Annual kWh generated per 1 kWp installed
+  averageInsolationKwhPerSqm: number; // Approximate planning-average daily kWh/m2, not an official insolation guarantee
+  averageTariffPerKwh: number; // Approximate planning-average residential tariff in INR ₹
+  stateSubsidyBonus: number; // Additional verified state incentive included in the calculation. Keep at 0 unless a current state incentive has been explicitly verified and modeled with its eligibility rules.
+  solarYieldFactor: number; // Estimated annual specific generation/yield used for planning
   notes?: string;
 }
 
@@ -46,9 +46,9 @@ export const INDIAN_STATES_DATA: IndianStateData[] = [
     discoms: ['BSES Rajdhani (BRPL)', 'BSES Yamuna (BYPL)', 'Tata Power DDL (TPDDL)', 'NDMC'],
     averageInsolationKwhPerSqm: 5.0,
     averageTariffPerKwh: 7.5,
-    stateSubsidyBonus: 2000, // Delhi Solar Policy generation-based incentive (GBI)
+    stateSubsidyBonus: 0,
     solarYieldFactor: 1420,
-    notes: 'Delhi Solar Policy offers GBI (Generation Based Incentive) of ₹2-3 per unit of solar generated.'
+    notes: 'Additional state incentives may apply; verify current state/DISCOM policy.'
   },
   {
     state: 'Tamil Nadu',
@@ -76,9 +76,9 @@ export const INDIAN_STATES_DATA: IndianStateData[] = [
     discoms: ['MVVNL (Lucknow)', 'PVVNL (Meerut/Noida)', 'DVVNL (Agra)', 'PuVVNL (Varanasi)', 'NPCL (Greater Noida)'],
     averageInsolationKwhPerSqm: 4.9,
     averageTariffPerKwh: 7.4,
-    stateSubsidyBonus: 15000, // UP state government top-up subsidy up to ₹15,000
+    stateSubsidyBonus: 0,
     solarYieldFactor: 1410,
-    notes: 'UP government provides additional state top-up subsidy of up to ₹15,000 for residential systems.'
+    notes: 'Additional state incentives may apply; verify current state/DISCOM policy.'
   },
   {
     state: 'Kerala',
@@ -93,7 +93,7 @@ export const INDIAN_STATES_DATA: IndianStateData[] = [
   {
     state: 'Telangana',
     majorCities: ['Hyderabad', 'Warangal', 'Nizamabad', 'Karimnagar', 'Khammam'],
-    discoms: ['TSSPDCL (Southern)', 'TSNPDCL (Northern)'],
+    discoms: ['TGSPDCL (Southern)', 'TGNPDCL (Northern)'],
     averageInsolationKwhPerSqm: 5.3,
     averageTariffPerKwh: 8.2,
     stateSubsidyBonus: 0,
@@ -162,9 +162,13 @@ export const INDIAN_STATES_DATA: IndianStateData[] = [
   }
 ];
 
-export function getStateData(stateName: string): IndianStateData {
-  const found = INDIAN_STATES_DATA.find(
-    s => s.state.toLowerCase() === stateName.trim().toLowerCase()
+export function getStateData(stateName: string): IndianStateData | undefined {
+  const trimmedStateName = stateName.trim();
+  if (!trimmedStateName) {
+    return undefined;
+  }
+
+  return INDIAN_STATES_DATA.find(
+    s => s.state.toLowerCase() === trimmedStateName.toLowerCase()
   );
-  return found || INDIAN_STATES_DATA[0];
 }

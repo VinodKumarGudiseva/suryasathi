@@ -119,7 +119,7 @@ export const ResultsDashboard: React.FC<ResultsDashboardProps> = ({
                   Rooftop Suitability: {plan.roofAnalysis.suitability}
                 </span>
                 <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-semibold">
-                  CV Verified
+                  AI-Assisted Estimate
                 </span>
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
