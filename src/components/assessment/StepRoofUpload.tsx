@@ -157,7 +157,7 @@ export const StepRoofUpload: React.FC<StepRoofUploadProps> = ({
   };
 
   const handleContinue = () => {
-    if (safeAreaSqFt <= 0) {
+    if (safeAreaSqFt <= 0 || !isConfirmed) {
       setError('Please enter a valid rooftop area greater than 0 sq.ft.');
       return;
     }

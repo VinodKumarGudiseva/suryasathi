@@ -30,30 +30,44 @@ export class DeterministicSolarCalculationAdapter implements ISolarCalculationSe
       ...(input.customAssumptions || {}),
     };
 
-    const stateData = getStateData(input.location?.state || 'Maharashtra');
-    const solarYieldFactor = Number(stateData.solarYieldFactor) || assumptions.defaultSolarYieldKwhPerKw;
-    
-    // 7. Location + Tariff fallback: use confirmed bill tariff if valid (between ₹3 and ₹18), otherwise use state/central baseline
-    const billTariff = Number(input.billData?.tariffRate || input.billData?.tariffRatePerKwh);
-    const tariffRate = (!isNaN(billTariff) && billTariff >= 3.0 && billTariff <= 18.0)
-      ? billTariff
-      : (Number(stateData.averageTariffPerKwh) || assumptions.defaultTariffRatePerKwh);
+    const requestedState = input.location?.state?.trim();
+    if (!requestedState) {
+      throw new Error('A valid state is required to calculate a solar plan.');
+    }
 
-    // 1. Sanitize consumption and roof inputs safely
+    const stateData = getStateData(requestedState);
+    if (!stateData) {
+      throw new Error('A valid state is required to calculate a solar plan.');
+    }
+
+    const solarYieldFactor = Number(stateData.solarYieldFactor) || assumptions.defaultSolarYieldKwhPerKw;
+
+    // 1. Validate required consumption and roof inputs
     const rawConsumption = Number(input.monthlyConsumptionKwh);
-    const monthlyKwh = (!isNaN(rawConsumption) && rawConsumption > 0)
-      ? Math.round(rawConsumption)
-      : 250; // Fallback default for demo if completely missing or zero
+    if (!Number.isFinite(rawConsumption) || rawConsumption <= 0) {
+      throw new Error('Monthly electricity consumption must be a valid number greater than 0 kWh.');
+    }
+    const monthlyKwh = Math.round(rawConsumption);
 
     const annualKwhNeed = monthlyKwh * 12;
 
-    // 2. Usable Roof Area determination
-    const rawRoofArea = Number(input.roofAreaSqM);
-    const usableRoofAreaSqM = (!isNaN(rawRoofArea) && rawRoofArea > 0)
-      ? rawRoofArea
-      : (input.roofAnalysis?.usableAreaSqM && input.roofAnalysis.usableAreaSqM > 0
-          ? input.roofAnalysis.usableAreaSqM
-          : 35.0); // ~376 sq.ft baseline
+    // 2. Validate roof area input
+    const rawRoofArea = Number(input.roofAreaSqM ?? input.roofAnalysis?.usableAreaSqM);
+    if (!Number.isFinite(rawRoofArea) || rawRoofArea <= 0) {
+      throw new Error('A valid roof area is required to calculate a solar plan.');
+    }
+    const usableRoofAreaSqM = rawRoofArea;
+
+    const rawBillAmount = Number(input.monthlyBillAmount ?? input.billData?.billAmount);
+    const billDerivedTariff = (rawBillAmount > 0 && rawConsumption > 0)
+      ? rawBillAmount / rawConsumption
+      : undefined;
+    const billTariff = (billDerivedTariff !== undefined && billDerivedTariff >= 3.0 && billDerivedTariff <= 18.0)
+      ? billDerivedTariff
+      : Number(input.billData?.tariffRate || input.billData?.tariffRatePerKwh);
+    const tariffRate = (billTariff && billTariff >= 3.0 && billTariff <= 18.0)
+      ? billTariff
+      : (Number(stateData.averageTariffPerKwh) || assumptions.defaultTariffRatePerKwh);
 
     // Physical maximum system capacity supported by the available roof
     // Area per kW = ~9.29 sq.m (approx 100 sq.ft)

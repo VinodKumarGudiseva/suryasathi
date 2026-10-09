@@ -153,8 +153,7 @@ export const StepBillUpload: React.FC<StepBillUploadProps> = ({
   };
 
   const handleContinue = () => {
-    if (!validation.isValid) return;
-
+    if (!validation.isValid || !isConfirmed) return;
     const confirmedBillData: BillData = {
       ...(extractedData || {
         confidence: 1.0,

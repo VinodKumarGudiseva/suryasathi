@@ -18,14 +18,13 @@ export const AssessmentWizard: React.FC<AssessmentWizardProps> = ({
   onCancel,
 }) => {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
-
   // Form State
   const [homeDetails, setHomeDetails] = useState({
-    state: 'Maharashtra',
-    city: 'Pune',
+    state: '',
+    city: '',
     pincode: '',
-    monthlyConsumptionKwh: 280,
-    monthlyBillAmount: 2380,
+    monthlyConsumptionKwh: 0,
+    monthlyBillAmount: 0,
   });
 
   const [billData, setBillData] = useState<BillData | undefined>(undefined);
