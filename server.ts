@@ -9,6 +9,7 @@ import { solarCalculationService } from './src/services/solarCalculationService.
 import { solarAdvisorService } from './src/services/solarAdvisorService.js';
 import { getAiProvider, AiServiceError } from './server/ai/config.js';
 import { extractBillFromFile } from './server/ai/billExtractor.js';
+import { analyzeRoofFromFile } from './server/ai/roofAnalyzer.js';
 
 dotenv.config();
 
@@ -183,8 +184,21 @@ app.post('/api/extract-bill', async (req: Request, res: Response) => {
 });
 
 // Rooftop Analysis API (Amazon SageMaker / CV adapter)
-app.post('/api/analyze-roof', (req: Request, res: Response) => {
+app.post('/api/analyze-roof', async (req: Request, res: Response) => {
   try {
+    // Real analysis path (AI_PROVIDER=gemini). Never falls back to fake data.
+    if (getAiProvider() === 'gemini') {
+      const { fileName, fileType, base64 } = req.body || {};
+      if (typeof base64 !== 'string' || !base64) {
+        return res.status(400).json({
+          success: false,
+          error: 'Image content is missing. The upload must include the photo as base64.',
+        });
+      }
+      const data = await analyzeRoofFromFile({ fileName, fileType, base64 });
+      return res.json({ success: true, data });
+    }
+
     const { fileName = 'roof.jpg', fileSize = 350000, fileType = 'image/jpeg' } = req.body || {};
     const fileNameLower = String(fileName).toLowerCase();
 
@@ -289,7 +303,8 @@ app.post('/api/analyze-roof', (req: Request, res: Response) => {
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message || 'Roof analysis failed' });
+    const status = err instanceof AiServiceError ? err.status : 500;
+    res.status(status).json({ success: false, error: err.message || 'Roof analysis failed' });
   }
 });
 
