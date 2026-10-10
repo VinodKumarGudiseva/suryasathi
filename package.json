@@ -12,6 +12,9 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/client-textract": "^3.1149.0",
+    "@aws-sdk/lib-dynamodb": "^3.1149.0",
     "@google/genai": "^2.4.0",
     "@modelcontextprotocol/client": "^2.3.1",
     "@opentelemetry/api": "^1.9.1",

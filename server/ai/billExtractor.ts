@@ -166,11 +166,8 @@ export interface BillFileInput {
 
 export type ModelCall = (opts: { prompt: string; mimeType: string; base64: string }) => Promise<unknown>;
 
-/** Validates the upload, asks the model, and normalizes the answer. `callModel` is injectable for tests. */
-export async function extractBillFromFile(
-  input: BillFileInput,
-  callModel: ModelCall = geminiJsonFromFile
-): Promise<BillData> {
+/** Validates an upload and returns clean base64 + mime type. Shared by every bill pipeline. */
+export function decodeBillUpload(input: BillFileInput): { mimeType: string; base64: string } {
   const mimeType = (input.fileType || '').toLowerCase();
   if (!ALLOWED_MIME.includes(mimeType)) {
     throw new AiServiceError('Unsupported file format. Please upload a PDF, JPG, or PNG electricity bill.', 400);
@@ -184,6 +181,15 @@ export async function extractBillFromFile(
   if (approxBytes > MAX_FILE_BYTES) {
     throw new AiServiceError('File exceeds the 10 MB limit. Please upload a smaller scan or photo.', 400);
   }
+  return { mimeType, base64 };
+}
+
+/** Validates the upload, asks the model, and normalizes the answer. `callModel` is injectable for tests. */
+export async function extractBillFromFile(
+  input: BillFileInput,
+  callModel: ModelCall = geminiJsonFromFile
+): Promise<BillData> {
+  const { mimeType, base64 } = decodeBillUpload(input);
 
   const raw = await callModel({ prompt: BILL_PROMPT, mimeType, base64 });
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {

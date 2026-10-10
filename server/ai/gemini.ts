@@ -48,3 +48,26 @@ export async function geminiJsonFromFile(opts: JsonFromFileOptions): Promise<unk
     throw new AiServiceError('Gemini returned a response that was not valid JSON.', 502);
   }
 }
+
+/** Text-only variant, used when Textract has already read the document. */
+export async function geminiJsonFromText(opts: { prompt: string }): Promise<unknown> {
+  const client = getClient();
+  let text: string | undefined;
+  try {
+    const response = await client.models.generateContent({
+      model: getGeminiModel(),
+      contents: [{ role: 'user', parts: [{ text: opts.prompt }] }],
+      config: { responseMimeType: 'application/json', temperature: 0 },
+    });
+    text = response.text;
+  } catch (err: any) {
+    throw new AiServiceError(`Gemini request failed: ${err?.message || 'unknown error'}`, 502);
+  }
+  if (!text) throw new AiServiceError('Gemini returned an empty response.', 502);
+  const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new AiServiceError('Gemini returned a response that was not valid JSON.', 502);
+  }
+}

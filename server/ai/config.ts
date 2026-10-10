@@ -30,3 +30,23 @@ export class AiServiceError extends Error {
     this.status = status;
   }
 }
+
+/**
+ * Service switches that are independent of AI_PROVIDER (Bedrock is not needed for these).
+ *   BILL_OCR=textract    -> read the bill text with Amazon Textract, then structure it with Gemini
+ *   PLAN_STORAGE=dynamodb -> save plans in Amazon DynamoDB through /api/plans
+ */
+export type BillOcr = 'gemini' | 'textract';
+export type PlanStorage = 'local' | 'dynamodb';
+
+export function getBillOcr(): BillOcr {
+  return (process.env.BILL_OCR || '').trim().toLowerCase() === 'textract' ? 'textract' : 'gemini';
+}
+
+export function getPlanStorage(): PlanStorage {
+  return (process.env.PLAN_STORAGE || '').trim().toLowerCase() === 'dynamodb' ? 'dynamodb' : 'local';
+}
+
+export function getAwsRegion(): string {
+  return (process.env.AWS_REGION || 'ap-south-1').trim();
+}

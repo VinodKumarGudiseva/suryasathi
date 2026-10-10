@@ -7,8 +7,9 @@ import { INDIAN_STATES_DATA, getStateData } from './src/data/indianStates.js';
 import { searchKnowledgeBase } from './src/data/schemeKnowledgeBase.js';
 import { solarCalculationService } from './src/services/solarCalculationService.js';
 import { solarAdvisorService } from './src/services/solarAdvisorService.js';
-import { getAiProvider, AiServiceError } from './server/ai/config.js';
-import { extractBillFromFile } from './server/ai/billExtractor.js';
+import { getAiProvider, getBillOcr, getPlanStorage, AiServiceError } from './server/ai/config.js';
+import { extractBill } from './server/ai/billPipeline.js';
+import { DynamoPlanStore, isValidOwnerId } from './server/aws/planStore.js';
 import { analyzeRoofFromFile } from './server/ai/roofAnalyzer.js';
 import { askAdvisorAgent } from './server/ai/advisorAgent.js';
 
@@ -29,6 +30,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
     service: 'SuryaSathi Rooftop Solar Backend',
     version: '1.0.0',
     aiProvider: getAiProvider(),
+    billOcr: getBillOcr(),
+    planStorage: getPlanStorage(),
     timestamp: new Date().toISOString(),
     awsMapping: {
       textract: 'MockBillExtractionAdapter -> AWS Textract',
@@ -55,7 +58,7 @@ app.post('/api/extract-bill', async (req: Request, res: Response) => {
           error: 'File content is missing. The upload must include the file as base64.',
         });
       }
-      const data = await extractBillFromFile({ fileName, fileType, base64 });
+      const data = await extractBill({ fileName, fileType, base64 });
       return res.json({ success: true, data });
     }
 
@@ -384,6 +387,75 @@ app.post('/api/advisor', async (req: Request, res: Response) => {
       success: false,
       error: err.message || 'AI Advisor inference failed.',
     });
+  }
+});
+
+// Plan storage in Amazon DynamoDB (only when PLAN_STORAGE=dynamodb; otherwise the browser keeps plans locally).
+// Each browser sends an anonymous x-owner-id, so one visitor can only see their own plans.
+let dynamoPlans: DynamoPlanStore | undefined;
+function plansContext(req: Request, res: Response): { store: DynamoPlanStore; ownerId: string } | null {
+  if (getPlanStorage() !== 'dynamodb') {
+    res.status(501).json({ success: false, error: 'Cloud plan storage is not enabled.' });
+    return null;
+  }
+  const ownerId = req.header('x-owner-id');
+  if (!isValidOwnerId(ownerId)) {
+    res.status(400).json({ success: false, error: 'A valid x-owner-id header is required.' });
+    return null;
+  }
+  dynamoPlans ??= new DynamoPlanStore();
+  return { store: dynamoPlans, ownerId };
+}
+function plansError(res: Response, err: any) {
+  console.error('[plans] DynamoDB request failed:', err?.name || 'error'); // name only, never plan content
+  res.status(502).json({ success: false, error: 'Cloud storage request failed. Please try again.' });
+}
+
+app.post('/api/plans', async (req: Request, res: Response) => {
+  const ctx = plansContext(req, res);
+  if (!ctx) return;
+  const plan = req.body?.plan;
+  if (!plan || typeof plan !== 'object' || typeof plan.id !== 'string' || !plan.id || plan.id.length > 100) {
+    return res.status(400).json({ success: false, error: 'A plan with a valid id is required.' });
+  }
+  try {
+    await ctx.store.save(ctx.ownerId, plan);
+    res.json({ success: true, id: plan.id });
+  } catch (err: any) {
+    plansError(res, err);
+  }
+});
+
+app.get('/api/plans', async (req: Request, res: Response) => {
+  const ctx = plansContext(req, res);
+  if (!ctx) return;
+  try {
+    res.json({ success: true, data: await ctx.store.list(ctx.ownerId) });
+  } catch (err: any) {
+    plansError(res, err);
+  }
+});
+
+app.get('/api/plans/:id', async (req: Request, res: Response) => {
+  const ctx = plansContext(req, res);
+  if (!ctx) return;
+  try {
+    const plan = await ctx.store.get(ctx.ownerId, req.params.id);
+    if (!plan) return res.status(404).json({ success: false, error: 'Plan not found.' });
+    res.json({ success: true, data: plan });
+  } catch (err: any) {
+    plansError(res, err);
+  }
+});
+
+app.delete('/api/plans/:id', async (req: Request, res: Response) => {
+  const ctx = plansContext(req, res);
+  if (!ctx) return;
+  try {
+    await ctx.store.remove(ctx.ownerId, req.params.id);
+    res.json({ success: true });
+  } catch (err: any) {
+    plansError(res, err);
   }
 });
 
