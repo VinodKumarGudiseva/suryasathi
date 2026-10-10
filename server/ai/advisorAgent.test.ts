@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Model } from '@strands-agents/sdk';
-import { askAdvisorAgent, buildSystemPrompt, findUngroundedAmounts, toSeedMessages } from './advisorAgent.js';
+import { askAdvisorAgent, buildSystemPrompt, findUngroundedAmounts, stripMarkdown, toSeedMessages } from './advisorAgent.js';
 import { AiServiceError } from './config.js';
 import type { AdvisorMessage } from '../../src/types/solar.js';
 
@@ -110,6 +110,20 @@ await test('buildSystemPrompt contains the safety rules', () => {
   const p = buildSystemPrompt({});
   assert.match(p, /NEVER invent or change numbers/);
   assert.match(p, /search_scheme_knowledge/);
+});
+
+await test('stripMarkdown removes ** bold, # headings and * bullets but keeps numbered lists and amounts', () => {
+  const out = stripMarkdown('## Eligibility\n1. **Residential consumer**: needs a home connection.\n* **Subsidy**: ₹78,000\n  * sub point');
+  assert.doesNotMatch(out, /\*\*|##/);
+  assert.match(out, /1\. Residential consumer: needs a home connection\./);
+  assert.match(out, /- Subsidy: ₹78,000/);
+  assert.match(out, /\s- sub point/);
+});
+
+await test('advisor answer reaches the chat without markdown asterisks', async () => {
+  const model = new FakeModel('1. **Residential Domestic Consumer**: you need a home connection.', false);
+  const r = await askAdvisorAgent('Am I eligible?', ctx, [], { model });
+  assert.doesNotMatch(r.text, /\*\*/);
 });
 
 console.log(`\n${passed} tests passed`);
