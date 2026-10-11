@@ -1,6 +1,7 @@
 import { searchKnowledgeBase } from '../data/schemeKnowledgeBase';
 import { AdvisorMessage, SolarPlan, AdvisorContext, AdvisorSource } from '../types/solar';
 import { ISolarAdvisorService } from './interfaces';
+import { RemoteSolarAdvisorAdapter } from './remoteAdvisorService';
 import { buildAdvisorContext } from './advisorContext';
 
 /**
@@ -341,4 +342,5 @@ ${
   }
 }
 
-export const solarAdvisorService = new LocalSolarAdvisorAdapter();
+export const solarAdvisorService: ISolarAdvisorService =
+  (import.meta as any).env?.VITE_ADVISOR === 'remote' ? new RemoteSolarAdvisorAdapter() : new LocalSolarAdvisorAdapter();

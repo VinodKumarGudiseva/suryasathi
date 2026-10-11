@@ -1,5 +1,6 @@
 import { SolarPlan } from '../types/solar';
 import { ISolarPlanStorageService } from './interfaces';
+import { RemoteSolarPlanAdapter } from './remoteStorageService';
 
 const STORAGE_KEY = 'suryasathi_saved_plans_v1';
 
@@ -65,4 +66,5 @@ export class LocalStorageSolarPlanAdapter implements ISolarPlanStorageService {
   }
 }
 
-export const solarPlanStorageService = new LocalStorageSolarPlanAdapter();
+export const solarPlanStorageService: ISolarPlanStorageService =
+  (import.meta as any).env?.VITE_PLAN_STORAGE === 'dynamodb' ? new RemoteSolarPlanAdapter() : new LocalStorageSolarPlanAdapter();
