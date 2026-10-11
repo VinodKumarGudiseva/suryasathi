@@ -1,6 +1,7 @@
 import { RoofAnalysis, RoofSuitability, RoofFactors } from '../types/solar';
 import { DEFAULT_SOLAR_ASSUMPTIONS } from '../config/solarAssumptions';
 import { IRoofAnalysisService } from './interfaces';
+import { fileToBase64 } from './fileToBase64';
 
 /**
  * Local / Mock Rooftop Computer Vision Analysis Adapter
@@ -51,6 +52,7 @@ export class MockRoofAnalysisAdapter implements IRoofAnalysisService {
     // 4. First attempt to call backend Express API if running in browser
     if (typeof window !== 'undefined') {
       try {
+        const base64 = await fileToBase64(image);
         const response = await fetch('/api/analyze-roof', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -58,6 +60,7 @@ export class MockRoofAnalysisAdapter implements IRoofAnalysisService {
             fileName,
             fileSize,
             fileType,
+            base64,
           }),
         });
 
@@ -66,7 +69,7 @@ export class MockRoofAnalysisAdapter implements IRoofAnalysisService {
           if (json.success && json.data) {
             return json.data;
           }
-        } else if (response.status >= 400 && response.status < 500) {
+        } else {
           const errJson = await response.json().catch(() => null);
           throw new Error(errJson?.error || 'Rooftop analysis could not process the photo.');
         }

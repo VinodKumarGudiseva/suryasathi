@@ -1,5 +1,6 @@
 import { BillData } from '../types/solar';
 import { IBillExtractionService } from './interfaces';
+import { fileToBase64 } from './fileToBase64';
 
 /**
  * Local / Mock Bill Extraction Adapter
@@ -41,6 +42,7 @@ export class MockBillExtractionAdapter implements IBillExtractionService {
     // 3. First attempt to call backend Express endpoint if running in browser
     if (typeof window !== 'undefined') {
       try {
+        const base64 = await fileToBase64(file);
         const response = await fetch('/api/extract-bill', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -48,6 +50,7 @@ export class MockBillExtractionAdapter implements IBillExtractionService {
             fileName,
             fileSize,
             fileType,
+            base64,
           }),
         });
 
@@ -56,7 +59,7 @@ export class MockBillExtractionAdapter implements IBillExtractionService {
           if (json.success && json.data) {
             return json.data;
           }
-        } else if (response.status >= 400 && response.status < 500) {
+        } else {
           const errJson = await response.json().catch(() => null);
           throw new Error(errJson?.error || 'Bill extraction could not parse the document.');
         }
