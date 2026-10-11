@@ -163,7 +163,7 @@ export const AdvisorChatDrawer: React.FC<AdvisorChatDrawerProps> = ({
                         </span>
                         {msg.confidence !== undefined && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200">
-                            {(msg.confidence * 100).toFixed(0)}% factual confidence
+                            {msg.confidence >= 0.8 ? 'Grounded in scheme data' : 'Please verify this answer'}
                           </span>
                         )}
                       </div>
